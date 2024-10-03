@@ -27,7 +27,7 @@ interface CreateDataResponse {
 }
 
 interface ReportData {
-  index: number;
+  index: string;
   status: string;
 }
 
@@ -60,7 +60,7 @@ function App() {
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [statusText, setStatusText] = React.useState<string>("");
   const [report, setReport] = React.useState<
-    { index: number; status: string; reason?: string }[]
+    { index: string; status: string; reason?: string }[]
   >([]); // Report state
   const [log, setLog] = React.useState<string[]>([]);
   const [code, setCode] = React.useState<string>("");
@@ -76,6 +76,14 @@ function App() {
   };
 
   const BASE_URL = "BASE_URL";
+
+  function isDisabled() {
+    if (images.length > 0) {
+      return false;
+    }
+
+    return true;
+  }
 
   const handleJsonChange = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -104,14 +112,42 @@ function App() {
     }
   };
 
+  const checkImagesSync = () => {
+    if (!data || images.length === 0) {
+      alert("Data JSON atau gambar belum dipilih.");
+      return false;
+    }
+
+    // Periksa setiap item di data
+    for (const item of data) {
+      for (const imageFileName of item.f7) {
+        const imageExists = images.some((img) => img.name === imageFileName);
+
+        // Jika ada gambar di f7 yang tidak ditemukan di images
+        if (!imageExists) {
+          alert(
+            `Gambar ${imageFileName} tidak ditemukan di gambar yang dipilih.`
+          );
+          return false;
+        }
+      }
+    }
+
+    // Jika semua gambar di f7 ada di images
+    return true;
+  };
+
   async function onLogin() {
+    const isSynced = checkImagesSync();
+    if (!isSynced) return; // Jika tidak sinkron, hentikan eksekusi
+
     setIsLoading(true);
     setStatusText("Sedang login...");
     setLog((prev) => [...prev, "system login"]);
 
     const body = {
       email: "EMAIL",
-      password: "PW",
+      password: "PASSWORD",
     };
 
     try {
@@ -128,6 +164,7 @@ function App() {
     } catch (error) {
       setLog((prev) => [...prev, "login gagal. Periksa koneksi."]);
       setStatusText("Login gagal. Periksa koneksi.");
+      console.log(error);
     } finally {
       setIsLoading(false); // Set loading state to false in all cases
     }
@@ -140,14 +177,12 @@ function App() {
       return;
     }
 
-    const tempReport: { index: number; status: string; reason?: string }[] = []; // Temporary report for processing
+    const tempReport: { index: string; status: string; reason?: string }[] = []; // Temporary report for processing
 
-    // Mengubah for loop menjadi for...of untuk memastikan proses berjalan satu per satu
     for (const [index, item] of data.entries()) {
       const imageFileNames = item.f7; // f7 is an array of image filenames
-      const uploadedImages: any[] = [];
 
-      for (const imageFileName of imageFileNames) {
+      for (const [imageIndex, imageFileName] of imageFileNames.entries()) {
         const imageFile = images.find((img) => img.name === imageFileName); // Find matching image by name
 
         if (imageFile) {
@@ -174,13 +209,29 @@ function App() {
                 ...prev,
                 `gambar ${imageFileName} berhasil di-upload.`,
               ]);
-              uploadedImages.push(uploadResponse.data.data[0]); // Store upload result
+
+              // Create one data record for each image
+              const success = await createData(
+                token,
+                [uploadResponse.data.data[0]],
+                item,
+                [imageFileName]
+              );
+              tempReport.push({
+                index: `${index + 1}-${imageIndex + 1}`, // Make the index more descriptive
+                status: success ? "SUKSES" : "GAGAL",
+                reason: statusText,
+              });
             } else {
               console.error(`Gagal meng-upload gambar ${imageFileName}.`);
               setLog((prev) => [
                 ...prev,
                 `gambar ${imageFileName} gagal di-upload.`,
               ]);
+              tempReport.push({
+                index: `${index + 1}-${imageIndex + 1}`,
+                status: "GAGAL",
+              });
             }
           } catch (error) {
             console.error(
@@ -191,6 +242,10 @@ function App() {
               ...prev,
               `error saat meng-upload gambar ${imageFileName}: ${error}`,
             ]);
+            tempReport.push({
+              index: `${index + 1}-${imageIndex + 1}`,
+              status: "GAGAL",
+            });
           }
         } else {
           console.warn(
@@ -200,24 +255,11 @@ function App() {
             ...prev,
             `gambar ${imageFileName} tidak ditemukan dalam state images.`,
           ]);
+          tempReport.push({
+            index: `${index + 1}-${imageIndex + 1}`,
+            status: "GAGAL",
+          });
         }
-      }
-
-      // Tunggu hingga semua gambar berhasil di-upload sebelum melanjutkan
-      if (uploadedImages.length === imageFileNames.length) {
-        const success = await createData(
-          token,
-          uploadedImages,
-          item,
-          imageFileNames
-        );
-        tempReport.push({
-          index: index + 1,
-          status: success ? "SUKSES" : "GAGAL",
-          reason: statusText,
-        });
-      } else {
-        tempReport.push({ index: index + 1, status: "GAGAL" });
       }
     }
 
@@ -286,7 +328,7 @@ function App() {
     }
   }
 
-  const downloadReport = (reportData: { index: number; status: string }[]) => {
+  const downloadReport = (reportData: { index: string; status: string }[]) => {
     const blob = new Blob([JSON.stringify({ data: reportData }, null, 2)], {
       type: "application/json",
     });
@@ -402,7 +444,6 @@ function App() {
             "Proses Data"
           )}
         </button>
-        <button onClick={() => localStorage.clear()}>clear storage</button>
         {isLoading && (
           <div className="flex flex-col items-center">
             <p className="text-white font-semibold m-0">Status: </p>

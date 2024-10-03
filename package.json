@@ -1,6 +1,6 @@
 {
   "name": "BOT-Auto-Input",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "main": "dist-electron/main/index.js",
   "description": "BOT Auto Input",
   "author": "Dev Ard",
