@@ -41,6 +41,16 @@ const _KEGIATAN_DATA = [
   "PARADE",
 ];
 
+const _KEGIATAN_DATA_LABEL = [
+  "Pemasangan atribut (spanduk, poster, stiker, dll)",
+  "Canvassing atau door-to-door",
+  "Kegiatan keagamaan",
+  "Konsolidasi relawan",
+  "Diskusi Publik",
+  "Panggung terbuka",
+  "Pawai",
+];
+
 const _JUMLAH_MASA = [
   "0-10",
   "11-50",
@@ -50,6 +60,17 @@ const _JUMLAH_MASA = [
   "500-1000",
   "1001-5000",
   "5001",
+];
+
+const _JUMLAH_MASA_LABEL = [
+  "<10",
+  "11-50",
+  "50-100",
+  "101-300",
+  "301-500",
+  "500-1000",
+  "1000-5000",
+  ">5000",
 ];
 
 const _PROV = ["PURBALINGGA"];
@@ -71,11 +92,28 @@ function App() {
 
   const logModalRef = React.useRef<HTMLDialogElement>(null); // Gunakan ref untuk modal
 
+  const [mode, setMode] = React.useState<"INPUT" | "GENERATE">("INPUT");
+  const [showType, setShowType] = React.useState<"INPUT" | "SHOW">("INPUT");
+
+  const [genData, setGenData] = React.useState<any>([]);
+  const [genObj, setGenObj] = React.useState<ImageData>({
+    f1: "",
+    f2: "",
+    f3: 0,
+    f4: 1,
+    f5: "",
+    f6: 0,
+    f7: [""],
+  });
+  const [inputType, setInputType] = React.useState<"ADD" | "EDIT">("ADD");
+  const [selectedIndex, setSelectedIndex] = React.useState<any>();
+
   const handleOpenModal = () => {
     logModalRef.current?.showModal(); // Gunakan ref untuk membuka modal
   };
 
-  const BASE_URL = "BASE_URL";
+  const BASE_URL = "";
+  // ,7gEf6KrbC78
 
   function isDisabled() {
     if (images.length > 0) {
@@ -146,8 +184,8 @@ function App() {
     setLog((prev) => [...prev, "system login"]);
 
     const body = {
-      email: "EMAIL",
-      password: "PASSWORD",
+      email: "",
+      password: "",
     };
 
     try {
@@ -444,6 +482,12 @@ function App() {
             "Proses Data"
           )}
         </button>
+        <button
+          className="btn btn-sm bg-orange-500 text-white"
+          onClick={() => setMode("GENERATE")}
+        >
+          Buat Config Data
+        </button>
         {isLoading && (
           <div className="flex flex-col items-center">
             <p className="text-white font-semibold m-0">Status: </p>
@@ -504,9 +548,312 @@ function App() {
     );
   }
 
+  console.log("DATA", genObj);
+
+  function renderGenerateConfig() {
+    function RenderBox({
+      pt,
+      tip,
+      onClick,
+      active,
+    }: {
+      pt: number;
+      tip: string;
+      onClick: any;
+      active: boolean;
+    }) {
+      return (
+        <div
+          onClick={onClick}
+          data-tip={tip}
+          className={` tooltip w-8 h-8 ${
+            active ? " bg-blue-500" : "bg-gray-700"
+          } cursor-pointer hover:bg-gray-500 rounded-md flex justify-center items-center`}
+        >
+          <div>{pt}</div>
+        </div>
+      );
+    }
+
+    function RenderCard({
+      data,
+      onEdit,
+      onDelete,
+    }: {
+      data: any;
+      onEdit: any;
+      onDelete: any;
+    }) {
+      return (
+        <div className="bg-slate-600 flex flex-col gap-2 p-4 rounded-md">
+          <span>{data.f1}</span>
+          <span>{data.f2}</span>
+          <div className="flex flex-row gap-4 mt-2">
+            <button className="btn btn-xs" onClick={onEdit}>
+              Edit
+            </button>
+            <button className="btn btn-xs" onClick={onDelete}>
+              Hapus
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function handleInput(e: any, key: any) {
+      const value = e.target.value;
+
+      if (key == "f7") {
+        setGenObj({ ...genObj, [key]: [value] });
+      } else {
+        setGenObj({ ...genObj, [key]: value });
+      }
+    }
+
+    const handleDelete = (index: number) => {
+      setGenData((prevData: any) =>
+        prevData.filter((_: any, i: number) => i !== index)
+      );
+    };
+
+    const handleEdit = (index: number, newData: any) => {
+      setGenData((prevData: any) =>
+        prevData.map((item: any, i: number) =>
+          i === index ? { ...item, ...newData } : item
+        )
+      );
+    };
+
+    const handleDownloadJSON = () => {
+      // Convert the genData array to a JSON string
+      const jsonData = JSON.stringify(genData, null, 2);
+
+      // Create a Blob from the JSON string
+      const blob = new Blob([jsonData], { type: "application/json" });
+
+      // Create a download link and click it programmatically
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "DATA.json";
+      link.click();
+
+      // Clean up the URL object after download
+      URL.revokeObjectURL(link.href);
+    };
+
+    return (
+      <div className="max-w-screen-sm flex flex-col justify-center">
+        {showType == "INPUT" ? (
+          <div className=" flex flex-col gap-2.5">
+            <button
+              onClick={() => {
+                setMode("INPUT");
+                setGenData([]);
+              }}
+              className="btn btn-lg text-lg btn-circle btn-ghost absolute right-2 top-2"
+            >
+              ✕
+            </button>
+            <label className="form-control max-w-sm">
+              <div className="label">
+                <span className="label-text">Penanggung Jawab</span>
+              </div>
+              <input
+                type="text"
+                placeholder="Penanggung Jawab"
+                className="input input-sm input-bordered max-w-sm"
+                value={genObj.f1}
+                onChange={(e) => handleInput(e, "f1")}
+              />
+            </label>
+            <label className="form-control max-w-sm">
+              <div className="label">
+                <span className="label-text">Nama Elemen</span>
+              </div>
+              <input
+                type="text"
+                placeholder="Nama Elemen"
+                className="input input-sm input-bordered max-w-sm"
+                value={genObj.f2}
+                onChange={(e) => handleInput(e, "f2")}
+              />
+            </label>
+            <div>
+              <div className="label">
+                <span className="label-text">Jenis Kegiatan</span>
+              </div>
+              <div className="flex flex-row gap-2">
+                {_KEGIATAN_DATA_LABEL.map((item, index) => {
+                  return (
+                    <RenderBox
+                      onClick={() => {
+                        setGenObj({ ...genObj, f3: index + 1 });
+                      }}
+                      active={genObj.f3 == index + 1}
+                      tip={item}
+                      pt={index + 1}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <div className="label">
+                <span className="label-text">Kab/Kota</span>
+              </div>
+              <div className="flex flex-row gap-2">
+                <RenderBox
+                  onClick={() => {
+                    setGenObj({ ...genObj, f4: 1 });
+                  }}
+                  active={genObj.f4 == 1}
+                  tip={"PURBALINGGA"}
+                  pt={1}
+                />
+              </div>
+            </div>
+            <label className="form-control max-w-sm">
+              <div className="label">
+                <span className="label-text">Tempat Kegiatan</span>
+              </div>
+              <input
+                type="text"
+                placeholder="Tempat Kegiatan"
+                className="input input-sm input-bordered max-w-sm"
+                value={genObj.f5}
+                onChange={(e) => handleInput(e, "f5")}
+              />
+            </label>
+            <div>
+              <div className="label">
+                <span className="label-text">Jumlah Masa</span>
+              </div>
+              <div className="flex flex-row gap-2">
+                {_JUMLAH_MASA_LABEL.map((item, index) => {
+                  return (
+                    <RenderBox
+                      onClick={() => {
+                        setGenObj({ ...genObj, f6: index + 1 });
+                      }}
+                      active={genObj.f6 == index + 1}
+                      tip={item}
+                      pt={index + 1}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+            <label className="form-control max-w-sm">
+              <div className="label">
+                <span className="label-text">
+                  Nama File ( Beserta ekstensi )
+                </span>
+              </div>
+              <input
+                type="text"
+                placeholder="Nama File ( cth: P1.jpg )"
+                className="input input-sm input-bordered max-w-sm"
+                value={genObj.f7[0]}
+                onChange={(e) => handleInput(e, "f7")}
+              />
+            </label>
+            <div className=" flex flex-col gap-4">
+              <button
+                className="btn btn-sm w-full bg-primary text-white mt-8"
+                onClick={() => {
+                  if (inputType == "ADD") {
+                    setGenData([...genData, genObj]);
+                    setGenObj({
+                      f1: "",
+                      f2: "",
+                      f3: 0,
+                      f4: 1,
+                      f5: "",
+                      f6: 0,
+                      f7: [""],
+                    });
+                  } else {
+                    setInputType("ADD");
+                    handleEdit(selectedIndex, genObj);
+                    setGenObj({
+                      f1: "",
+                      f2: "",
+                      f3: 0,
+                      f4: 1,
+                      f5: "",
+                      f6: 0,
+                      f7: [""],
+                    });
+                  }
+                }}
+              >
+                {inputType == "ADD" ? "Tambah Data" : "Simpan Perubahan"}
+              </button>
+              <button
+                className="btn btn-sm w-full bg-secondary text-white"
+                onClick={() => setShowType("SHOW")}
+              >
+                Lihat Data ({genData.length})
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className=" flex flex-col gap-2.5 max-h-screen">
+            <button
+              onClick={() => setShowType("INPUT")}
+              className="btn btn-lg text-lg btn-circle btn-ghost absolute right-2 top-2"
+            >
+              ✕
+            </button>
+            <div className=" flex flex-col w-full">
+              <div className="flex flex-row items-center gap-4">
+                <h2>
+                  {genData.length > 0 ? "Data Ditambahkan" : "Belum Ada Data"}
+                </h2>
+                {genData.length > 0 && (
+                  <button
+                    onClick={handleDownloadJSON}
+                    className="btn btn-sm btn-primary"
+                  >
+                    Buat DATA.json
+                  </button>
+                )}
+              </div>
+
+              <div className=" flex flex-col gap-2 overflow-y-auto">
+                {genData.map((item: any, index: number) => {
+                  return (
+                    <RenderCard
+                      data={item}
+                      onEdit={() => {
+                        setGenObj(item);
+                        setShowType("INPUT");
+                        setSelectedIndex(index);
+                        setInputType("EDIT");
+                      }}
+                      onDelete={() => handleDelete(index)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderMain(): React.ReactNode {
+    if (mode == "INPUT") {
+      return renderUnlocked();
+    } else {
+      return renderGenerateConfig();
+    }
+  }
+
   return (
     <div className="bg-slate-900 mx-auto min-h-screen flex items-center justify-center">
-      {isUnlocked ? renderUnlocked() : renderLocked()}
+      {renderMain()}
       <dialog id="log_modal" ref={logModalRef} className="modal">
         <div className="modal-box">
           <form method="dialog">
